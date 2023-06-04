@@ -1,0 +1,228 @@
+ --color-codemirror-text: #e6edf3;
+    --color-codemirror-bg: #0d1117;
+    --color-codemirror-gutters-bg: #0d1117;
+    --color-codemirror-guttermarker-text: #0d1117;
+    --color-codemirror-guttermarker-subtle-text: #6e7681;
+    --color-codemirror-linenumber-text: #7d8590;
+    --color-codemirror-cursor: #e6edf3;
+    --color-codemirror-selection-bg: rgba(56,139,253,0.4);
+    --color-codemirror-activeline-bg: rgba(110,118,129,0.1);
+    --color-codemirror-matchingbracket-text: #e6edf3;
+    --color-codemirror-lines-bg: #0d1117;
+    --color-codemirror-syntax-comment: #8b949e;
+    --color-codemirror-syntax-constant: #79c0ff;
+    --color-codemirror-syntax-entity: #d2a8ff;
+    --color-codemirror-syntax-keyword: #ff7b72;
+    --color-codemirror-syntax-storage: #ff7b72;
+    --color-codemirror-syntax-string: #a5d6ff;
+    --color-codemirror-syntax-support: #79c0ff;
+    --color-codemirror-syntax-variable: #ffa6
+CodeMirror
+Examples
+Documentation
+Try
+Discuss
+GitHub
+Version 5
+Example: Styling
+
+CodeMirror uses a CSS-in-JS system to be able to include its styles directly in the script files. This means you don't have to include a library CSS file in your page for the editor to work—both the editor view's own styling and any styling defined for dependencies are automatically pulled in through the JavaScript module system.
+
+Themes are simply extensions that tell the editor to mount an additional style module and add the (generated) class name that enables those styles to its outer DOM element.
+Old-Fashioned CSS
+
+The important elements in the editor have regular (non-generated) CSS class names, which can be targeted with manually written style sheets. For example, the outer element has class cm-editor.
+
+However, the CSS rules injected by the library will be prefixed with an extra generated class name, so that they only apply when explicitly enabled. That means that if you need to override them, you must take care to make your own rules at least as specific as the injected rules, for example by prefixing them with .cm-editor. They only need to be as specific, not more specific, because the injected rules are placed before any other style sheets, and will thus have a lower default precedence than your rules.
+
+.cm-editor.cm-focused { outline: 2px solid cyan }
+.cm-editor .cm-content { font-family: "Consolas" }
+
+Note that the cm-focused rule applies directly to the element that'll have the cm-editor class, and thus needs no space between the selectors, whereas the cm-content rule does need one because it applies to a node inside the editor.
+Things you can Style
+
+An editor (with a gutter and drawSelection enabled) has a DOM structure like this:
+
+<div class="cm-editor [cm-focused] [generated classes]">
+  <div class="cm-scroller">
+    <div class="cm-gutters">
+      <div class="cm-gutter [...]">
+        <!-- One gutter element for each line -->
+        <div class="cm-gutterElement">...</div>
+      </div>
+    </div>
+    <div class="cm-content" contenteditable="true">
+      <!-- The actual document content -->
+      <div class="cm-line">Content goes here</div>
+      <div class="cm-line">...</div>
+    </div>
+    <div class="cm-selectionLayer">
+      <!-- Positioned rectangles to draw the selection -->
+      <div class="cm-selectionBackground"></div>
+    </div>
+    <div class="cm-cursorLayer">
+      <!-- Positioned elements to draw cursors -->
+      <div class="cm-cursor"></div>
+    </div>
+  </div>
+</div>
+
+Of course, there are limits to how you can style the editor. Things like making the editor lines display: inline or the cursor position: fixed will just break stuff. But within reasonable bounds, the library tries to be robust when it comes to styling.
+
+    You can style content text with varying fonts, size, color, etc. The editor does not expect a monospace font or a fixed line height.
+
+    You can add vertical padding to cm-content and horizontal padding to cm-line.
+
+    By default, the editor adjusts to the height of its content, but you can make cm-scroller overflow: auto, and assign a height or max-height to cm-editor, to make the editor scrollable.
+
+    Colors can be adjusted throughout, but when adding background colors to content, it is recommended to use partially transparent colors. That way such a style doesn't hide other styling behind it (including the selection).
+
+    Whitespace behavior inside the editor can be pre or pre-wrap to control line wrapping. (The line wrapping extension simply sets it to pre-wrap.)
+
+    The editor's text direction is automatically derived from the direction style of the content DOM.
+
+Themes
+
+Themes are defined with EditorView.theme. That function takes an object whose properties are CSS selectors and whose values are styles, and returns an extension that installs the theme.
+
+import {EditorView} from "@codemirror/view"
+
+let myTheme = EditorView.theme({
+  "&": {
+    color: "white",
+    backgroundColor: "#034"
+  },
+  ".cm-content": {
+    caretColor: "#0e9"
+  },
+  "&.cm-focused .cm-cursor": {
+    borderLeftColor: "#0e9"
+  },
+  "&.cm-focused .cm-selectionBackground, ::selection": {
+    backgroundColor: "#074"
+  },
+  ".cm-gutters": {
+    backgroundColor: "#045",
+    color: "#ddd",
+    border: "none"
+  }
+}, {dark: true})
+
+There's a few things going on here. Firstly, some of the rules contain “&” placeholders. This indicates the position of the outer editor element in the rule. By default, a generated class name is prefixed to the rules, with a space after it (so ".cm-content" becomes ".gen001 .cm-content"). But in rules that directly target the outer element (which gets the generated class), that doesn't work, and you have to place an & character to indicate where to insert the class selector.
+
+Secondly, because there are two ways of showing the selection in CodeMirror (the native selection and the drawSelection extension), themes will usually want to style both—the caret-color and ::selection rules apply to the native selection, whereas the .cm-cursor and .cm-selectionBackground rules style the library-drawn selection.
+
+Lastly, since this is a dark theme, it passes a dark: true option, so that the editor will enable its dark default styles for things not explicitly styled by the theme.
+
+A real theme will want to style a few more things, including elements created by extensions (such as panels and tooltips). You'll also usually want to include a highlight style in your theme. You can see the One Dark theme for an example, and possibly copy and modify it to create your own theme.
+Base Themes
+
+When you create an extension that adds some new DOM structure to the editor, you'll usually want to include a base theme that provides a default style for the elements. Base themes act a lot like regular themes, except that they are mounted with lower precedence and can provide separate rules for dark and light themes.
+
+For example, a hypothetical extension that replaces all instances of the letter o with blue circles might want to include a base theme like this...
+
+import {EditorView} from "@codemirror/view"
+
+let baseTheme = EditorView.baseTheme({
+  ".cm-o-replacement": {
+    display: "inline-block",
+    width: ".5em",
+    height: ".5em",
+    borderRadius: ".25em"
+  },
+  "&light .cm-o-replacement": {
+    backgroundColor: "#04c"
+  },
+  "&dark .cm-o-replacement": {
+    backgroundColor: "#5bf"
+  }
+})
+
+The &dark and &light placeholders act much like &, except that they expand to a class that is only enabled when the editor's theme is light or dark. In this case, the base theme gives its circles a brighter color in a dark theme (on the assumption that the background will be darker there).
+
+The extension returned by baseTheme must be added to the editor configuration to (reliably) take effect—the style rules will only be mounted in the DOM when an editor that uses them is created. It is usually bundled up in an array with other related extensions and returned from the exported function that produces the extensions for the feature (see for example the zebra stripes example).
+Highlighting
+
+Code highlighting uses a somewhat different system from editor-wide theming. Code styles are also created with JavaScript and enabled with an editor extension. But by default they don't use stable, non-generated class names. A highlight style directly returns the class names for the syntactic tokens.
+
+Highlight associate highlighting tags with styles. For example, this one assigns styles to keywords and comments.
+
+import {tags} from "@lezer/highlight"
+import {HighlightStyle} from "@codemirror/language"
+
+const myHighlightStyle = HighlightStyle.define([
+  {tag: tags.keyword, color: "#fc6"},
+  {tag: tags.comment, color: "#f5d", fontStyle: "italic"}
+])
+
+Each of the objects given to HighlightStyle.define mentions a tag (which are assigned to tokens by language packages), and otherwise contains style properties just like the objects in a theme.
+
+When defining an editor theme, you'll usually want to provide both a theme extension and a highlight style that looks good with it. Wrap a highlight style (or other highlighter) in syntaxHighlighting to create an extension that enables it.
+
+import {syntaxHighlighting} from "@codemirror/language"
+
+// In your extensions...
+syntaxHighlighting(myHighlightStyle)
+
+If you need to style tokens with plain old CSS, you can use the classHighlightStyle, which just adds a static class (for example cmt-keyword) to tokens, without actually defining any rules for that class.
+Overflow and Scrolling
+
+Without any custom styling, a CodeMirror editor grows vertically, scrolls (rather than wraps) long lines, and doesn't have any border except a focus ring when focused.
+
+To enable line wrapping, add the EditorView.lineWrapping extension to your configuration. It is also possible to adjust the white-space style of the content element in some other way, but only pre and pre-wrap are supported by the library, and wrapping can be unreliable if you don't also set overflow-wrap: anywhere, so it is recommended to just use this extension to enable wrapping.
+
+Adjusting the vertical behavior of the editor can be done by giving its outer element a height, and setting overflow: auto on the scroller element.
+
+const fixedHeightEditor = EditorView.theme({
+  "&": {height: "300px"},
+  ".cm-scroller": {overflow: "auto"}
+})
+
+To let the editor grow until it reaches a maximum height, and scroll from that point on, use max-height instead of height in a setup like the one above.
+
+Giving the editor a minimum height is, due to some obscure CSS limitations, a bit more involved—you have to assign that height to the content and the gutter, not the wrapper element, to make sure that those take up the entire height of the editor.
+
+const minHeightEditor = EditorView.theme({
+  ".cm-content, .cm-gutter": {minHeight: "200px"}
+})
+
+Code of Conduct
+Report an Issue
+Q!f /I  L e`_ K O  X WN t  # ̑   y m)# j8 . a$  T 	A1   ӄOY I !ю  O $*O|Oqa2  CT   x  u bGJ$ HT N~` &:BT #T4Y!  %  j׃  " 脎M	j C    J2 TX6  < y  ) Ӈ  U&lTnc(Q  b<'    *> Qvodm {q l5:  ( IDd   } 	] D!  4      PCML2  L=    `    GS  .  V $  FJ1Zb 
+. $ F3G"P@  q tb/UF "  X     1Z * 2  *@   \ )   "    S%  D)C( `[Z7 ^̷p   \[=  å c  ʣ6  1 E& J ~1 'lVLѲ/!D: OB sAiP K]  b   ?   f '5   vGJͦI  <0  2Ԣ >    ʹ f I  Ш vp "    j   F (Q C *i  4    ` V D 
+   K  e  zT   L  E@ o   fU ;!4  Gn͆    
+*T  T R|R ,]    ċ I  (a*X\w t   4	Њ 
+j ˼\ 탣  
+
+ X    R6 gY    T7w n T 098)  ,!m  X 4P3J " V1   Me   ,Z 5 L̷ a;  x oT  M p   x ˫U)aEh #P  ]a EZ,Kj)Q7 7f &    Hw.  8) )
+! b  /Y C# @  b@u &&&Y, ̙ Kl ^  ` < H 4! :  $ ^l DB  0H $r QdMB s X~    O  ; Xપ >/    I > bq 'RC [z   !<- `"   xůJZT Z 
+   r:   /  
+ 8<
+fG li     D  ٢  J/v U e7YږL 
+XP ))u ɵ ^** f  J@  Siy[    1a LD  FLT d    j    r /    ^  m  B  5D# DR *C%  A    H c  5Y1 2:'iV    1GQ @I ~  C~Bv    %   "t  	 IS     bJr Bh \  F6T R    B 9 U@?U U"   1       	 1# O$G p  5 ԤJ {       $ {|  EiLX I4 c#F J ""?ۇ y   چǎ8   D"iFW i8   ff  ba* $ 0 J Ke= # cE 2Nt    d*n  dsZ QC$ 1v   Ip ( FH JfJVm  H
+kAZ E D 	!  J )- e-J e, :WS6 ]&:w 
+ f !\eI ݶ
+ j    
+& P T ELF M ! *Y  E ,21J g  ܱ r   ^  { "iAV
+   = d  	 #}      =   JA   "*Ő   Hnvr  t   A H= 2| ]> k     ;+ Oza  8  J  cD ʺ1Ѩ  V mU m mShR  pR  ! I   I Y L  ( &  d*! B   '    aX'x ! [.  'T,     A     1Ն, &f *  8 om ov ێu  X   PԲl #  PG  %,$TQC 1 8DC    ڈ*!HIQ       d $ ɵ I  Mol _    `d 336XA$ B $  
+4   H@  &e7  @ I e&f5 $ #3 H     0l @ ]p  &$ 3
+D  f c02@H@      Y    0   R B A     m|  V  Ġ 7G	     X 3  >'  B  / _   P   =P} z  g  
+E5A$B/   D$  ~O  " x`ȑ,  Ddy2	*' ȶ    
+ "$~Ǽy Ƅ $ \y  /  ؇ *        x  a! {    DD  > ' =̙?m[ + %9  # Ac0  %  
+
+      i   ' >$   '  D D ;  H   2D  DP@ lJ _   d  g ?Y  `t  0c:v{ nm/z   0 6   ! '
+a 4hص  
+'5  N  W    V wyt
+z M cm ڧu) "  LN ܡ t YT b hi     %?LD ?z Ye ʙOA s%Dܒn,      A  G  Ҏ  5r>  
+      $WXP V  ,B B%` d~w̉ 8T   ; ȴU6  
+ @S  e` x NK   `c9 _  4~ L c   =    e_   Z J-B  9N D x{ ` ҵ2id dw  ruT,< <!%M %p 94 : d    +!UU Ki  u 1  Ų 
+*,   	  ~֓ X, dIȻO%je#  @ ^ a橦 iO :' * >q)`I<     Aߟ  < z {4a }T     r   a rQ 3*AJ |5iZ   =   Or   m(:G4J
+ Ϫ  }i    7  m   |  eٔaMq   f Y   a  J   ͖D,)*%   *   
+8   :  ܎v8'*G(R ]1  iu 9﵌8 Kzz   buE   6  R  xgZtjc  @&  /    
+ӣM  >'0 1 dj Th o  )C*dI (` a4l$ ړ N L ,$ ᙧF S  2 bM  QIh Pp  Kwi   E S Za " H  Q   t7T j  0M 7  f30  Br  H  =   IV-  "H@  `Bh .1֨ #  	CQ
+  ` T? W T
+" H     HPO H Ӄ  I7XI; v RI9  P  P     \	O   K        ?o =  L 5  È	  / D#  x     * "     E   I b F  L lh  cY*  F I     ھӇ =      σ    | ﶳ, kP 
+SJƘe , ʚJFdd&d0 *  
+ S1
+a  
+ )  ZI? w$S 	   
